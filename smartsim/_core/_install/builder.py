@@ -518,7 +518,7 @@ class RedisAIBuilder(Builder):
         fetchable_deps: t.List[_RAIBuildDependency] = [_DLPackRepository("v0.5_RAI")]
         if self.fetch_torch:
             pt_dep = _choose_pt_variant(os_)
-            fetchable_deps.append(pt_dep(arch, device, "2.0.1"))
+            fetchable_deps.append(pt_dep(arch, device, "2.1.0"))
         if self.fetch_tf:
             fetchable_deps.append(_TFArchive(os_, arch, device, "2.13.1"))
         if self.fetch_onnx:
