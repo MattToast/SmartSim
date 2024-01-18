@@ -28,6 +28,7 @@
 import functools
 import pathlib
 import platform
+import textwrap
 import threading
 import time
 
@@ -370,3 +371,20 @@ def test_valid_platforms():
 )
 def test_git_commands_are_configered_correctly_for_platforms(plat, cmd, expected_cmd):
     assert build.config_git_command(plat, cmd) == expected_cmd
+
+
+def test_patch_file_lines(p_test_dir):
+    def make_text_blurb(food):
+        return textwrap.dedent(f"""\
+            My favorite food is {food}
+            {food} is an important part of a healthy breakfast
+            {food} {food} {food} {food}
+            This line should be unchanged!
+            --> {food} <--
+            """)
+
+    some_file = p_test_dir / "test.txt"
+    some_file.touch()
+    some_file.write_text(make_text_blurb("SPAM"))
+    build._patch_file_lines(some_file, lambda l: l.replace("SPAM", "EGGS"))
+    assert some_file.read_text() == make_text_blurb("EGGS")

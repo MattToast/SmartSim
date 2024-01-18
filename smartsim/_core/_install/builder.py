@@ -28,6 +28,7 @@
 
 import concurrent.futures
 import enum
+import io
 import itertools
 import os
 import platform
@@ -581,6 +582,24 @@ class RedisAIBuilder(Builder):
             if not dst_file.is_file():
                 os.symlink(src_file, dst_file)
 
+    def _patch_source(self) -> None:
+        _patch_file_lines(
+            self.rai_build_path / "CMakeLists.txt",
+            lambda line: re.sub(
+                r"CMAKE_MINIMUM_REQUIRED\(VERSION\s([0-2]\.\d+|3\.[0-8])\.\d+\)",
+                "CMAKE_MINIMUM_REQUIRED(VERSION 3.8.0)",
+                line,
+            ),
+        )
+        _patch_file_lines(
+            self.rai_build_path / "src/backends/libtorch_c/CMakeLists.txt",
+            lambda line: re.sub(
+                r"set_property\(TARGET\storch_c\sPROPERTY\sCXX_STANDARD\s(98|11|14)\)",
+                "set_property(TARGET torch_c PROPERTY CXX_STANDARD 17)",
+                line,
+            ),
+        )
+
     def build_from_git(
         self, git_url: str, branch: str, device: Device = Device.CPU
     ) -> None:
@@ -619,6 +638,7 @@ class RedisAIBuilder(Builder):
         )
 
         self.run_command(clone_cmd, out=subprocess.DEVNULL, cwd=self.build_dir)
+        self._patch_source()
         self._fetch_deps_for(device)
 
         if self.libtf_dir and device.value:
@@ -1051,3 +1071,13 @@ def config_git_command(plat: Platform, cmd: t.Sequence[str]) -> t.List[str]:
             + cmd[where:]
         )
     return cmd
+
+
+def _patch_file_lines(
+    file: t.Union[str, "os.PathLike[str]"], fn: t.Callable[[str], str]
+) -> None:
+    buf = io.StringIO()
+    with open(file, "r", encoding="utf-8") as file_desc:
+        buf.writelines(map(fn, file_desc))
+    with open(file, "w", encoding="utf-8") as file_desc:
+        file_desc.write(buf.getvalue())
