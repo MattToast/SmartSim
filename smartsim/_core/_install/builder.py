@@ -891,7 +891,7 @@ class _PTArchiveLinux(_PTArchive):
     @property
     def url(self) -> str:
         if self.device == Device.GPU:
-            pt_build = "cu117"
+            pt_build = "cu118"
         else:
             pt_build = Device.CPU.value
         # pylint: disable-next=line-too-long
