@@ -75,10 +75,13 @@ class Ensemble(entity.CompoundEntity):
         combinations = permutation_strategy(
             self.file_parameters, self.exe_arg_parameters, self.max_permutations
         )
-        combinations = combinations if combinations else [ParamSet({},{})]
-        permutations_ = list(itertools.chain.from_iterable(
-            itertools.repeat(permutation, self.replicas) for permutation in combinations
-        ))
+        combinations = combinations if combinations else [ParamSet({}, {})]
+        permutations_ = list(
+            itertools.chain.from_iterable(
+                itertools.repeat(permutation, self.replicas)
+                for permutation in combinations
+            )
+        )
         return tuple(
             Application(
                 name=f"{self.name}-{i}",

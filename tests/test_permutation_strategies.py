@@ -44,7 +44,9 @@ def test_strategy_registration(monkeypatch):
 
 def test_strategies_cannot_be_overwritten(monkeypatch):
     monkeypatch.setattr(
-        strategies, "_REGISTERED_STRATEGIES", {"some-strategy": lambda params, exe_args, nmax: []}
+        strategies,
+        "_REGISTERED_STRATEGIES",
+        {"some-strategy": lambda params, exe_args, nmax: []},
     )
     with pytest.raises(ValueError):
         strategies._register("some-strategy")(lambda params, exe_args, nmax: [])
@@ -78,7 +80,8 @@ def broken_strategy(p, n, e):
         pytest.param(broken_strategy, id="Strategy raises during execution"),
         pytest.param(lambda params, exe_args, nmax: 123, id="Does not return a list"),
         pytest.param(
-            lambda params, exe_args, nmax: [1, 2, 3], id="Does not return a list of dicts"
+            lambda params, exe_args, nmax: [1, 2, 3],
+            id="Does not return a list of dicts",
         ),
     ),
 )
