@@ -47,12 +47,12 @@ def test_strategies_cannot_be_overwritten(monkeypatch):
         strategies, "_REGISTERED_STRATEGIES", {"some-strategy": lambda params, exe_args, nmax: []}
     )
     with pytest.raises(ValueError):
-        strategies._register("some-strategy")(lambda params, nmax: [])
+        strategies._register("some-strategy")(lambda params, exe_args, nmax: [])
 
 
 def test_strategy_retreval(monkeypatch):
-    new_strat_a = lambda params, nmax: []
-    new_strat_b = lambda params, nmax: []
+    new_strat_a = lambda params, exe_args, nmax: []
+    new_strat_b = lambda params, exe_args, nmax: []
 
     monkeypatch.setattr(
         strategies,
@@ -76,15 +76,15 @@ def broken_strategy(p, n, e):
     "strategy",
     (
         pytest.param(broken_strategy, id="Strategy raises during execution"),
-        pytest.param(lambda params, nmax: 123, id="Does not return a list"),
+        pytest.param(lambda params, exe_args, nmax: 123, id="Does not return a list"),
         pytest.param(
-            lambda params, nmax: [1, 2, 3], id="Does not return a list of dicts"
+            lambda params, exe_args, nmax: [1, 2, 3], id="Does not return a list of dicts"
         ),
     ),
 )
 def test_custom_strategy_raises_user_strategy_error_if_something_goes_wrong(strategy):
     with pytest.raises(errors.UserStrategyError):
-        strategies.resolve(strategy)({"SPAM": ["EGGS"]}, 123)
+        strategies.resolve(strategy)({"SPAM": ["EGGS"]}, {"SPAM": [["EGGS"]]}, 123)
 
 
 @pytest.mark.parametrize(
@@ -95,32 +95,32 @@ def test_custom_strategy_raises_user_strategy_error_if_something_goes_wrong(stra
             (
                 [
                     ParamSet(
-                        _params={"SPAM": "a", "EGGS": "c"}, _exe_args={"EXE": ["a"]}
+                        params={"SPAM": "a", "EGGS": "c"}, exe_args={"EXE": ["a"]}
                     ),
                     ParamSet(
-                        _params={"SPAM": "a", "EGGS": "c"},
-                        _exe_args={"EXE": ["b", "c"]},
+                        params={"SPAM": "a", "EGGS": "c"},
+                        exe_args={"EXE": ["b", "c"]},
                     ),
                     ParamSet(
-                        _params={"SPAM": "a", "EGGS": "d"}, _exe_args={"EXE": ["a"]}
+                        params={"SPAM": "a", "EGGS": "d"}, exe_args={"EXE": ["a"]}
                     ),
                     ParamSet(
-                        _params={"SPAM": "a", "EGGS": "d"},
-                        _exe_args={"EXE": ["b", "c"]},
+                        params={"SPAM": "a", "EGGS": "d"},
+                        exe_args={"EXE": ["b", "c"]},
                     ),
                     ParamSet(
-                        _params={"SPAM": "b", "EGGS": "c"}, _exe_args={"EXE": ["a"]}
+                        params={"SPAM": "b", "EGGS": "c"}, exe_args={"EXE": ["a"]}
                     ),
                     ParamSet(
-                        _params={"SPAM": "b", "EGGS": "c"},
-                        _exe_args={"EXE": ["b", "c"]},
+                        params={"SPAM": "b", "EGGS": "c"},
+                        exe_args={"EXE": ["b", "c"]},
                     ),
                     ParamSet(
-                        _params={"SPAM": "b", "EGGS": "d"}, _exe_args={"EXE": ["a"]}
+                        params={"SPAM": "b", "EGGS": "d"}, exe_args={"EXE": ["a"]}
                     ),
                     ParamSet(
-                        _params={"SPAM": "b", "EGGS": "d"},
-                        _exe_args={"EXE": ["b", "c"]},
+                        params={"SPAM": "b", "EGGS": "d"},
+                        exe_args={"EXE": ["b", "c"]},
                     ),
                 ]
             ),
@@ -131,11 +131,11 @@ def test_custom_strategy_raises_user_strategy_error_if_something_goes_wrong(stra
             (
                 [
                     ParamSet(
-                        _params={"SPAM": "a", "EGGS": "c"}, _exe_args={"EXE": ["a"]}
+                        params={"SPAM": "a", "EGGS": "c"}, exe_args={"EXE": ["a"]}
                     ),
                     ParamSet(
-                        _params={"SPAM": "b", "EGGS": "d"},
-                        _exe_args={"EXE": ["b", "c"]},
+                        params={"SPAM": "b", "EGGS": "d"},
+                        exe_args={"EXE": ["b", "c"]},
                     ),
                 ]
             ),
@@ -146,32 +146,32 @@ def test_custom_strategy_raises_user_strategy_error_if_something_goes_wrong(stra
             (
                 [
                     ParamSet(
-                        _params={"SPAM": "a", "EGGS": "c"}, _exe_args={"EXE": ["a"]}
+                        params={"SPAM": "a", "EGGS": "c"}, exe_args={"EXE": ["a"]}
                     ),
                     ParamSet(
-                        _params={"SPAM": "a", "EGGS": "c"},
-                        _exe_args={"EXE": ["b", "c"]},
+                        params={"SPAM": "a", "EGGS": "c"},
+                        exe_args={"EXE": ["b", "c"]},
                     ),
                     ParamSet(
-                        _params={"SPAM": "a", "EGGS": "d"}, _exe_args={"EXE": ["a"]}
+                        params={"SPAM": "a", "EGGS": "d"}, exe_args={"EXE": ["a"]}
                     ),
                     ParamSet(
-                        _params={"SPAM": "a", "EGGS": "d"},
-                        _exe_args={"EXE": ["b", "c"]},
+                        params={"SPAM": "a", "EGGS": "d"},
+                        exe_args={"EXE": ["b", "c"]},
                     ),
                     ParamSet(
-                        _params={"SPAM": "b", "EGGS": "c"}, _exe_args={"EXE": ["a"]}
+                        params={"SPAM": "b", "EGGS": "c"}, exe_args={"EXE": ["a"]}
                     ),
                     ParamSet(
-                        _params={"SPAM": "b", "EGGS": "c"},
-                        _exe_args={"EXE": ["b", "c"]},
+                        params={"SPAM": "b", "EGGS": "c"},
+                        exe_args={"EXE": ["b", "c"]},
                     ),
                     ParamSet(
-                        _params={"SPAM": "b", "EGGS": "d"}, _exe_args={"EXE": ["a"]}
+                        params={"SPAM": "b", "EGGS": "d"}, exe_args={"EXE": ["a"]}
                     ),
                     ParamSet(
-                        _params={"SPAM": "b", "EGGS": "d"},
-                        _exe_args={"EXE": ["b", "c"]},
+                        params={"SPAM": "b", "EGGS": "d"},
+                        exe_args={"EXE": ["b", "c"]},
                     ),
                 ]
             ),

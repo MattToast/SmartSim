@@ -39,6 +39,7 @@ import typing as t
 from smartsim.entity import _mock, entity, strategies
 from smartsim.entity.files import EntityFiles
 from smartsim.entity.model import Application
+from smartsim.entity.param_data_class import ParamSet
 
 
 # TODO: If we like this design, we need to:
@@ -74,10 +75,10 @@ class Ensemble(entity.CompoundEntity):
         combinations = permutation_strategy(
             self.file_parameters, self.exe_arg_parameters, self.max_permutations
         )
-        permutations_ = itertools.chain.from_iterable(
+        combinations = combinations if combinations else [ParamSet({},{})]
+        permutations_ = list(itertools.chain.from_iterable(
             itertools.repeat(permutation, self.replicas) for permutation in combinations
-        )
-        test = list(permutations_)
+        ))
         return tuple(
             Application(
                 name=f"{self.name}-{i}",
@@ -87,10 +88,10 @@ class Ensemble(entity.CompoundEntity):
                 # FIXME: remove this constructor arg! It should not exist!!
                 exe_args=self.exe_args,
                 files=self.files,
-                params=i._params,
-                params_as_args=i._exe_args,
+                params=i.params,
+                params_as_args=i.exe_args,
             )
-            for i in test
+            for i in permutations_
         )
 
     def as_jobs(self, settings: _mock.LaunchSettings) -> tuple[_mock.Job, ...]:
