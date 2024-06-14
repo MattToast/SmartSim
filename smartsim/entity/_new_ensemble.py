@@ -46,6 +46,10 @@ from smartsim.entity.strategies import ParamSet
 #         1) Move this to the `smartsim._core.entity.ensemble` module
 #         2) Decide what to do witht the original `Ensemble` impl
 class Ensemble(entity.CompoundEntity):
+    """Entity to help parameterize the creation multiple application
+    instances.
+    """
+
     def __init__(
         self,
         name: str,
@@ -71,6 +75,9 @@ class Ensemble(entity.CompoundEntity):
         self.replicas = replicas
 
     def _create_applications(self) -> tuple[Application, ...]:
+        """Concretize the ensemble attributes into a collection of
+        application instances.
+        """
         permutation_strategy = strategies.resolve(self.permutation_strategy)
         combinations = permutation_strategy(
             self.file_parameters, self.exe_arg_parameters, self.max_permutations

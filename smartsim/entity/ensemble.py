@@ -32,18 +32,14 @@ from os import getcwd
 from tabulate import tabulate
 
 from .._core._install.builder import Device
-from ..error import (
-    EntityExistsError,
-    SmartSimError,
-    SSUnsupportedError,
-    UserStrategyError,
-)
+from ..error import EntityExistsError, SmartSimError, SSUnsupportedError
 from ..log import get_logger
 from ..settings.base import BatchSettings, RunSettings
-from .dbobject import DBModel, DBScript
+from .dbobject import FSModel, FSScript
 from .entity import SmartSimEntity
 from .entityList import EntityList
 from .model import Application
+from .strategies import PermutationStrategyType
 from .strategies import resolve as resolve_strategy
 
 logger = get_logger(__name__)
@@ -64,7 +60,7 @@ class Ensemble(EntityList[Application]):
         params_as_args: t.Optional[t.List[str]] = None,
         batch_settings: t.Optional[BatchSettings] = None,
         run_settings: t.Optional[RunSettings] = None,
-        perm_strat: str = "all_perm",
+        perm_strat: t.Union[str, PermutationStrategyType] = "all_perm",
         **kwargs: t.Any,
     ) -> None:
         """Initialize an Ensemble of Application instances.
@@ -105,14 +101,19 @@ class Ensemble(EntityList[Application]):
         """An alias for a shallow copy of the ``entities`` attribute"""
         return list(self.entities)
 
-    def _initialize_entities(self, **kwargs: t.Any) -> None:
+    def _initialize_entities(
+        self,
+        *,
+        perm_strat: t.Union[str, PermutationStrategyType] = "all_perm",
+        **kwargs: t.Any,
+    ) -> None:
         """Initialize all the applications within the ensemble based
         on the parameters passed to the ensemble and the permutation
         strategy given at init.
 
         :raises UserStrategyError: if user generation strategy fails
         """
-        strategy = resolve_strategy(kwargs.pop("perm_strat"))
+        strategy = resolve_strategy(perm_strat)
         replicas = kwargs.pop("replicas", None)
         self.replicas = replicas
 
@@ -123,12 +124,8 @@ class Ensemble(EntityList[Application]):
                 # Compute all combinations of application parameters and arguments
                 n_applications = kwargs.get("n_applications", 0)
                 all_application_params = strategy(self.params, n_applications)
-                if not isinstance(all_application_params, list):
-                    raise UserStrategyError(strategy)
 
                 for i, param_set in enumerate(all_application_params):
-                    if not isinstance(param_set, dict):
-                        raise UserStrategyError(strategy)
                     run_settings = deepcopy(self.run_settings)
                     application_name = "_".join((self.name, str(i)))
                     application = Application(
@@ -203,10 +200,10 @@ class Ensemble(EntityList[Application]):
                 f"Application {application.name} already exists in ensemble {self.name}"
             )
 
-        if self._db_models:
-            self._extend_entity_db_models(application, self._db_models)
-        if self._db_scripts:
-            self._extend_entity_db_scripts(application, self._db_scripts)
+        if self._fs_models:
+            self._extend_entity_fs_models(application, self._fs_models)
+        if self._fs_scripts:
+            self._extend_entity_fs_scripts(application, self._fs_scripts)
 
         self.entities.append(application)
 
@@ -313,10 +310,10 @@ class Ensemble(EntityList[Application]):
         inputs: t.Optional[t.List[str]] = None,
         outputs: t.Optional[t.List[str]] = None,
     ) -> None:
-        """A TF, TF-lite, PT, or ONNX model to load into the DB at runtime
+        """A TF, TF-lite, PT, or ONNX model to load into the fs at runtime
 
-        Each ML Model added will be loaded into an
-        orchestrator (converged or not) prior to the execution
+        Each ML Model added will be loaded into a
+        feature store (converged or not) prior to the execution
         of every entity belonging to this ensemble
 
         One of either model (in memory representation) or model_path (file)
@@ -337,7 +334,7 @@ class Ensemble(EntityList[Application]):
         :param inputs: model inputs (TF only)
         :param outputs: model outupts (TF only)
         """
-        db_model = DBModel(
+        fs_model = FSModel(
             name=name,
             backend=backend,
             model=model,
@@ -354,19 +351,19 @@ class Ensemble(EntityList[Application]):
         )
         dupe = next(
             (
-                db_model.name
-                for ensemble_ml_model in self._db_models
-                if ensemble_ml_model.name == db_model.name
+                fs_model.name
+                for ensemble_ml_model in self._fs_models
+                if ensemble_ml_model.name == fs_model.name
             ),
             None,
         )
         if dupe:
             raise SSUnsupportedError(
-                f'An ML Model with name "{db_model.name}" already exists'
+                f'An ML Model with name "{fs_model.name}" already exists'
             )
-        self._db_models.append(db_model)
+        self._fs_models.append(fs_model)
         for entity in self.applications:
-            self._extend_entity_db_models(entity, [db_model])
+            self._extend_entity_fs_models(entity, [fs_model])
 
     def add_script(
         self,
@@ -380,7 +377,7 @@ class Ensemble(EntityList[Application]):
         """TorchScript to launch with every entity belonging to this ensemble
 
         Each script added to the application will be loaded into an
-        orchestrator (converged or not) prior to the execution
+        feature store (converged or not) prior to the execution
         of every entity belonging to this ensemble
 
         Device selection is either "GPU" or "CPU". If many devices are
@@ -399,7 +396,7 @@ class Ensemble(EntityList[Application]):
         :param devices_per_node: number of devices on each host
         :param first_device: first device to use on each host
         """
-        db_script = DBScript(
+        fs_script = FSScript(
             name=name,
             script=script,
             script_path=script_path,
@@ -409,19 +406,19 @@ class Ensemble(EntityList[Application]):
         )
         dupe = next(
             (
-                db_script.name
-                for ensemble_script in self._db_scripts
-                if ensemble_script.name == db_script.name
+                fs_script.name
+                for ensemble_script in self._fs_scripts
+                if ensemble_script.name == fs_script.name
             ),
             None,
         )
         if dupe:
             raise SSUnsupportedError(
-                f'A Script with name "{db_script.name}" already exists'
+                f'A Script with name "{fs_script.name}" already exists'
             )
-        self._db_scripts.append(db_script)
+        self._fs_scripts.append(fs_script)
         for entity in self.applications:
-            self._extend_entity_db_scripts(entity, [db_script])
+            self._extend_entity_fs_scripts(entity, [fs_script])
 
     def add_function(
         self,
@@ -434,10 +431,10 @@ class Ensemble(EntityList[Application]):
         """TorchScript function to launch with every entity belonging to this ensemble
 
         Each script function to the application will be loaded into a
-        non-converged orchestrator prior to the execution
+        non-converged feature store prior to the execution
         of every entity belonging to this ensemble.
 
-        For converged orchestrators, the :meth:`add_script` method should be used.
+        For converged feature stores, the :meth:`add_script` method should be used.
 
         Device selection is either "GPU" or "CPU". If many devices are
         present, a number can be passed for specification e.g. "GPU:1".
@@ -453,7 +450,7 @@ class Ensemble(EntityList[Application]):
         :param devices_per_node: number of devices on each host
         :param first_device: first device to use on each host
         """
-        db_script = DBScript(
+        fs_script = FSScript(
             name=name,
             script=function,
             device=device,
@@ -462,23 +459,23 @@ class Ensemble(EntityList[Application]):
         )
         dupe = next(
             (
-                db_script.name
-                for ensemble_script in self._db_scripts
-                if ensemble_script.name == db_script.name
+                fs_script.name
+                for ensemble_script in self._fs_scripts
+                if ensemble_script.name == fs_script.name
             ),
             None,
         )
         if dupe:
             raise SSUnsupportedError(
-                f'A Script with name "{db_script.name}" already exists'
+                f'A Script with name "{fs_script.name}" already exists'
             )
-        self._db_scripts.append(db_script)
+        self._fs_scripts.append(fs_script)
         for entity in self.applications:
-            self._extend_entity_db_scripts(entity, [db_script])
+            self._extend_entity_fs_scripts(entity, [fs_script])
 
     @staticmethod
-    def _extend_entity_db_models(
-        application: Application, db_models: t.List[DBModel]
+    def _extend_entity_fs_models(
+        application: Application, fs_models: t.List[FSModel]
     ) -> None:
         """
         Ensures that the Machine Learning model names being added to the Ensemble
@@ -486,17 +483,17 @@ class Ensemble(EntityList[Application]):
 
         This static method checks if the provided ML model names already exist in
         the Ensemble. An SSUnsupportedError is raised if any duplicate names are
-        found. Otherwise, it appends the given list of DBModels to the Ensemble.
+        found. Otherwise, it appends the given list of FSModel to the Ensemble.
 
         :param application: SmartSim Application object.
-        :param db_models: List of DBModels to append to the Ensemble.
+        :param fs_models: List of FSModels to append to the Ensemble.
         """
-        for add_ml_model in db_models:
+        for add_ml_model in fs_models:
             dupe = next(
                 (
-                    db_model.name
-                    for db_model in application.db_models
-                    if db_model.name == add_ml_model.name
+                    fs_model.name
+                    for fs_model in application.fs_models
+                    if fs_model.name == add_ml_model.name
                 ),
                 None,
             )
@@ -507,26 +504,26 @@ class Ensemble(EntityList[Application]):
             application.add_ml_model_object(add_ml_model)
 
     @staticmethod
-    def _extend_entity_db_scripts(
-        application: Application, db_scripts: t.List[DBScript]
+    def _extend_entity_fs_scripts(
+        application: Application, fs_scripts: t.List[FSScript]
     ) -> None:
         """
         Ensures that the script/function names being added to the Ensemble are unique.
 
         This static method checks if the provided script/function names already exist
         in the Ensemble. An SSUnsupportedError is raised if any duplicate names
-        are found. Otherwise, it appends the given list of DBScripts to the
+        are found. Otherwise, it appends the given list of FSScripts to the
         Ensemble.
 
         :param application: SmartSim Application object.
-        :param db_scripts: List of DBScripts to append to the Ensemble.
+        :param fs_scripts: List of FSScripts to append to the Ensemble.
         """
-        for add_script in db_scripts:
+        for add_script in fs_scripts:
             dupe = next(
                 (
                     add_script.name
-                    for db_script in application.db_scripts
-                    if db_script.name == add_script.name
+                    for fs_script in application.fs_scripts
+                    if fs_script.name == add_script.name
                 ),
                 None,
             )

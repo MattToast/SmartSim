@@ -50,14 +50,30 @@ TPermutationStrategy = t.Callable[
     list[ParamSet],
 ]
 
-_REGISTERED_STRATEGIES: t.Final[dict[str, TPermutationStrategy]] = {}
+# Map of globally registered strategy names to registered strategy callables
+_REGISTERED_STRATEGIES: t.Final[dict[str, PermutationStrategyType]] = {}
 
 
 def _register(name: str) -> t.Callable[
-    [TPermutationStrategy],
-    TPermutationStrategy,
+    [PermutationStrategyType],
+    PermutationStrategyType,
 ]:
-    def _impl(fn: TPermutationStrategy) -> TPermutationStrategy:
+    """Create a decorator to globally register a permutation strategy under a
+    given name.
+
+    :param name: The name under which to register a strategy
+    :return: A decorator to register a permutation strategy function
+    """
+
+    def _impl(fn: PermutationStrategyType) -> PermutationStrategyType:
+        """Add a strategy function to the globally registered strategies under
+        the `name` caught in the closure.
+
+        :param fn: A permutation strategy
+        :returns: The original strategy, unaltered
+        :raises ValueError: A strategy under name caught in the closure has
+            already been registered
+        """
         if name in _REGISTERED_STRATEGIES:
             msg = f"A strategy with the name '{name}' has already been registered"
             raise ValueError(msg)
@@ -67,9 +83,21 @@ def _register(name: str) -> t.Callable[
     return _impl
 
 
-def resolve(strategy: str | TPermutationStrategy) -> TPermutationStrategy:
+def resolve(strategy: str | PermutationStrategyType) -> PermutationStrategyType:
+    """Look-up or sanitize a permutation strategy:
+
+        - When `strategy` is a `str` it will look for a globally registered
+          strategy function by that name.
+
+        - When `strategy` is a `callable` it is will return a sanitized
+          strategy function.
+
+    :param strategy: The name of a registered strategy or a custom
+        permutation strategy
+    :return: A valid permutation strategy callable
+    """
     if callable(strategy):
-        return _make_safe_custom_strategy(strategy)
+        return _make_sanitized_custom_strategy(strategy)
     try:
         return _REGISTERED_STRATEGIES[strategy]
     except KeyError:
@@ -79,7 +107,24 @@ def resolve(strategy: str | TPermutationStrategy) -> TPermutationStrategy:
         ) from None
 
 
-def _make_safe_custom_strategy(fn: TPermutationStrategy) -> TPermutationStrategy:
+def _make_sanitized_custom_strategy(
+    fn: PermutationStrategyType,
+) -> PermutationStrategyType:
+    """Take a callable that satisfies the shape of a permutation strategy and
+    return a sanitized version for future callers.
+
+    The sanitized version of the permutation strategy will intercept any
+    exceptions raised by the original permutation and re-raise a
+    `UserStrategyError`.
+
+    The sanitized version will also check the type of the value returned from
+    the original callable, and if it does conform to the expected return type,
+    a `UserStrategyError` will be raised.
+
+    :param fn: A custom user strategy function
+    :return: A sanitized version of the custom strategy function
+    """
+
     @functools.wraps(fn)
     def _impl(
         params: t.Optional[t.Mapping[str, t.Sequence[str]]],
