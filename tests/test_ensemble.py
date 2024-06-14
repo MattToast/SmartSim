@@ -32,7 +32,6 @@ import pytest
 from smartsim.entity import _mock
 from smartsim.entity._new_ensemble import Ensemble
 from smartsim.entity.strategies import ParamSet
-from smartsim.error import errors
 
 pytestmark = pytest.mark.group_a
 
