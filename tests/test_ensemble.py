@@ -31,7 +31,7 @@ import pytest
 
 from smartsim.entity import _mock
 from smartsim.entity._new_ensemble import Ensemble
-from smartsim.entity.param_data_class import ParamSet
+from smartsim.entity.strategies import ParamSet
 from smartsim.error import errors
 
 pytestmark = pytest.mark.group_a
@@ -43,19 +43,18 @@ _2x2_EXE_ARG = {"EXE": [["a"], ["b", "c"]], "ARGS": [["d"], ["e", "f"]]}
 def user_created_function(
     file_params: t.Mapping[str, t.Sequence[str]],
     exe_arg_params: t.Mapping[str, t.Sequence[t.Sequence[str]]],
-    _n_permutations: int = 0,
+    n_permutations: int = 0,
 ) -> list[ParamSet]:
     # Create dictionaries for each parameter permutation
-    param_zip = [dict(zip(file_params, permutation)) for permutation in file_params][
-        :_n_permutations
+    param_zip = [dict(zip(file_params, permutation)) for permutation in file_params.values()][
+        :n_permutations
     ]
     # Create dictionaries for each executable argument permutation
     exe_arg_zip = [
-        dict(zip(exe_arg_params, permutation)) for permutation in exe_arg_params
-    ][:_n_permutations]
+        dict(zip(exe_arg_params, permutation)) for permutation in exe_arg_params.values()
+    ][:n_permutations]
     # Combine parameter and executable argument dictionaries
     combinations = itertools.product(param_zip, exe_arg_zip)
-    # Combine the parameter sets from 'param_zip' and 'exe_arg_zip' using itertools.zip_longest
     param_set = (ParamSet(file_param, exe_arg) for file_param, exe_arg in combinations)
     return list(param_set)
 
@@ -130,23 +129,24 @@ def test_replicated_applications_have_eq_deep_copies_of_parameters(params):
 
 # fmt: off
 @pytest.mark.parametrize(
-    "                  params,      exe_arg_params,   strategy,  max_perms, replicas, expected_num_jobs",         
-    (pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,  "all_perm",         30,        1,                16 , id="Set max permutation high"),  # Ask about this 
-     pytest.param(_2x2_PARAMS,                None,  "all_perm",          4,        1,                4  , id="No exe arg params or Replicas"),
-     pytest.param(       None,        _2x2_EXE_ARG,  "all_perm",          4,        1,                4  , id="No Parameters or Replicas"),
-     pytest.param(       None,                None,  "all_perm",          4,        1,                1  , id="No Parameters, Exe_Arg_Param or Replicas"),
-     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,  "all_perm",          1,        1,                1  , id="Set max permutation to lowest"),
-     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,  "all_perm",          6,        2,                12 , id="Set max permutation, set replicas"),
-     pytest.param(         {},        _2x2_EXE_ARG,  "all_perm",          6,        2,                 8 , id="Set params as dict, set max permutations and replicas"),
-     pytest.param(_2x2_PARAMS,                  {},  "all_perm",          6,        2,                 8 , id="Set params as dict, set max permutations and replicas"),
-     pytest.param(         {},                  {},  "all_perm",          6,        2,                 2 , id="Set params as dict, set max permutations and replicas")
+    "                  params,      exe_arg_params,   max_perms, replicas, expected_num_jobs",         
+    (pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,          30,        1,                16 , id="Set max permutation high"),
+     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,          -1,        1,                16 , id="Set max permutation negative"),
+     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,           0,        1,                 1 , id="Set max permutation zero"),
+     pytest.param(_2x2_PARAMS,                None,           4,        1,                4  , id="No exe arg params or Replicas"),
+     pytest.param(       None,        _2x2_EXE_ARG,           4,        1,                4  , id="No Parameters or Replicas"),
+     pytest.param(       None,                None,           4,        1,                1  , id="No Parameters, Exe_Arg_Param or Replicas"),
+     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,           1,        1,                1  , id="Set max permutation to lowest"),
+     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,           6,        2,                12 , id="Set max permutation, set replicas"),
+     pytest.param(         {},        _2x2_EXE_ARG,           6,        2,                 8 , id="Set params as dict, set max permutations and replicas"),
+     pytest.param(_2x2_PARAMS,                  {},           6,        2,                 8 , id="Set params as dict, set max permutations and replicas"),
+     pytest.param(         {},                  {},           6,        2,                 2 , id="Set params as dict, set max permutations and replicas")
 ))
 # fmt: on
 def test_all_perm_strategy(
     # Parameterized
     params,
     exe_arg_params,
-    strategy,
     max_perms,
     replicas,
     expected_num_jobs,
@@ -159,7 +159,7 @@ def test_all_perm_strategy(
         ("hello", "world"),
         file_parameters=params,
         exe_arg_parameters=exe_arg_params,
-        permutation_strategy=strategy,
+        permutation_strategy="all_perm",
         max_permutations=max_perms,
         replicas=replicas,
     ).as_jobs(mock_launcher_settings)
@@ -182,23 +182,22 @@ def test_all_perm_strategy_contents():
 
 # fmt: off
 @pytest.mark.parametrize(
-    "                  params,      exe_arg_params,   strategy,  max_perms, replicas, expected_num_jobs",         
-    (pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,     "step",         30,        1,                 2 , id="Set max permutation high"),  # Ask about this 
-     pytest.param(_2x2_PARAMS,                None,     "step",          4,        1,                 2 , id="No exe arg params or Replicas"),
-     pytest.param(       None,        _2x2_EXE_ARG,     "step",          4,        1,                 2 , id="No Parameters or Replicas"),
-     pytest.param(       None,                None,     "step",          4,        1,                 1 , id="No Parameters, Exe_Arg_Param or Replicas"),
-     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,     "step",          1,        1,                 1 , id="Set max permutation to lowest"),
-     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,     "step",          6,        2,                 4 , id="Set max permutation, set replicas"),
-     pytest.param(         {},        _2x2_EXE_ARG,     "step",          6,        2,                 4 , id="Set params as dict, set max permutations and replicas"),
-     pytest.param(_2x2_PARAMS,                  {},     "step",          6,        2,                 4 , id="Set params as dict, set max permutations and replicas"),
-     pytest.param(         {},                  {},     "step",          6,        2,                 2 , id="Set params as dict, set max permutations and replicas")
+    "                  params,      exe_arg_params,   max_perms, replicas, expected_num_jobs",         
+    (pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,          30,        1,                 2 , id="Set max permutation high"),
+     pytest.param(_2x2_PARAMS,                None,           4,        1,                 1 , id="No exe arg params or Replicas"),
+     pytest.param(       None,        _2x2_EXE_ARG,           4,        1,                 1 , id="No Parameters or Replicas"),
+     pytest.param(       None,                None,           4,        1,                 1 , id="No Parameters, Exe_Arg_Param or Replicas"),
+     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,           1,        1,                 1 , id="Set max permutation to lowest"),
+     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,           6,        2,                 4 , id="Set max permutation, set replicas"),
+     pytest.param(         {},        _2x2_EXE_ARG,           6,        2,                 2 , id="Set params as dict, set max permutations and replicas"),
+     pytest.param(_2x2_PARAMS,                  {},           6,        2,                 2 , id="Set params as dict, set max permutations and replicas"),
+     pytest.param(         {},                  {},           6,        2,                 2 , id="Set params as dict, set max permutations and replicas")
 ))
 # fmt: on
 def test_step_strategy(
     # Parameterized
     params,
     exe_arg_params,
-    strategy,
     max_perms,
     replicas,
     expected_num_jobs,
@@ -211,7 +210,7 @@ def test_step_strategy(
         ("hello", "world"),
         file_parameters=params,
         exe_arg_parameters=exe_arg_params,
-        permutation_strategy=strategy,
+        permutation_strategy="step",
         max_permutations=max_perms,
         replicas=replicas,
     ).as_jobs(mock_launcher_settings)
@@ -220,23 +219,24 @@ def test_step_strategy(
 
 # fmt: off
 @pytest.mark.parametrize(
-    "                  params,      exe_arg_params,   strategy,  max_perms, replicas, expected_num_jobs",         
-    (pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,   "random",         30,        1,                16 , id="Set max permutation high"),  # Ask about this 
-     pytest.param(_2x2_PARAMS,                None,   "random",          4,        1,                4  , id="No exe arg params or Replicas"),
-     pytest.param(       None,        _2x2_EXE_ARG,   "random",          4,        1,                4  , id="No Parameters or Replicas"),
-     pytest.param(       None,                None,   "random",          4,        1,                1  , id="No Parameters, Exe_Arg_Param or Replicas"),
-     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,   "random",          1,        1,                1  , id="Set max permutation to lowest"),
-     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,   "random",          6,        2,                12 , id="Set max permutation, set replicas"),
-     pytest.param(         {},        _2x2_EXE_ARG,   "random",          6,        2,                 8 , id="Set params as dict, set max permutations and replicas"),
-     pytest.param(_2x2_PARAMS,                  {},   "random",          6,        2,                 8 , id="Set params as dict, set max permutations and replicas"),
-     pytest.param(         {},                  {},   "random",          6,        2,                 2 , id="Set params as dict, set max permutations and replicas")
+    "                  params,      exe_arg_params,   max_perms, replicas, expected_num_jobs",         
+    (pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,          30,        1,                16 , id="Set max permutation high"),
+     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,          -1,        1,                16 , id="Set max permutation negative"),
+     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,           0,        1,                 1 , id="Set max permutation zero"),
+     pytest.param(_2x2_PARAMS,                None,           4,        1,                4  , id="No exe arg params or Replicas"),
+     pytest.param(       None,        _2x2_EXE_ARG,           4,        1,                4  , id="No Parameters or Replicas"),
+     pytest.param(       None,                None,           4,        1,                1  , id="No Parameters, Exe_Arg_Param or Replicas"),
+     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,           1,        1,                1  , id="Set max permutation to lowest"),
+     pytest.param(_2x2_PARAMS,        _2x2_EXE_ARG,           6,        2,                12 , id="Set max permutation, set replicas"),
+     pytest.param(         {},        _2x2_EXE_ARG,           6,        2,                 8 , id="Set params as dict, set max permutations and replicas"),
+     pytest.param(_2x2_PARAMS,                  {},           6,        2,                 8 , id="Set params as dict, set max permutations and replicas"),
+     pytest.param(         {},                  {},           6,        2,                 2 , id="Set params as dict, set max permutations and replicas")
 ))
 # fmt: on
 def test_random_strategy(
     # Parameterized
     params,
     exe_arg_params,
-    strategy,
     max_perms,
     replicas,
     expected_num_jobs,
@@ -249,7 +249,7 @@ def test_random_strategy(
         ("hello", "world"),
         file_parameters=params,
         exe_arg_parameters=exe_arg_params,
-        permutation_strategy=strategy,
+        permutation_strategy="random",
         max_permutations=max_perms,
         replicas=replicas,
     ).as_jobs(mock_launcher_settings)
