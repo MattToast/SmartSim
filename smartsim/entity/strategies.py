@@ -32,17 +32,20 @@ import functools
 import itertools
 import random
 import typing as t
+from dataclasses import dataclass, field
 
 from smartsim.error import errors
-from dataclasses import dataclass, field
+
 
 @dataclass(frozen=True)
 class ParamSet:
     """
     Represents a set of file parameters and execution arguments as parameters.
     """
+
     params: dict[str, str] = field(default_factory=dict)
     exe_args: dict[str, list[str]] = field(default_factory=dict)
+
 
 # Type alias for the shape of a permutation strategy callable
 PermutationStrategyType = t.Callable[
@@ -169,7 +172,9 @@ def create_all_permutations(
     :return: A sequence of mappings of all possible permutations
     """
     file_params_permutations = itertools.product(*file_params.values())
-    param_zip = (dict(zip(file_params, permutation)) for permutation in file_params_permutations)
+    param_zip = (
+        dict(zip(file_params, permutation)) for permutation in file_params_permutations
+    )
     exe_arg_params_permutations = itertools.product(*exe_arg_params.values())
     exe_arg_zip = [
         dict(zip(exe_arg_params, permutation))

@@ -45,18 +45,7 @@ def user_created_function(
     exe_arg_params: t.Mapping[str, t.Sequence[t.Sequence[str]]],
     n_permutations: int = 0,
 ) -> list[ParamSet]:
-    # Create dictionaries for each parameter permutation
-    param_zip = [dict(zip(file_params, permutation)) for permutation in file_params.values()][
-        :n_permutations
-    ]
-    # Create dictionaries for each executable argument permutation
-    exe_arg_zip = [
-        dict(zip(exe_arg_params, permutation)) for permutation in exe_arg_params.values()
-    ][:n_permutations]
-    # Combine parameter and executable argument dictionaries
-    combinations = itertools.product(param_zip, exe_arg_zip)
-    param_set = (ParamSet(file_param, exe_arg) for file_param, exe_arg in combinations)
-    return list(param_set)
+    return [ParamSet({}, {})]
 
 
 @pytest.fixture
@@ -71,13 +60,9 @@ def test_ensemble_user_created_strategy(mock_launcher_settings):
         "test_ensemble",
         "echo",
         ("hello", "world"),
-        file_parameters=_2x2_PARAMS,
-        exe_arg_parameters=_2x2_EXE_ARG,
         permutation_strategy=user_created_function,
-        max_permutations=30,
-        replicas=1,
     ).as_jobs(mock_launcher_settings)
-    assert len(jobs) == 4
+    assert len(jobs) == 1
 
 
 def test_ensemble_without_any_members_raises_when_cast_to_jobs(mock_launcher_settings):

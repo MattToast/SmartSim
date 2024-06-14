@@ -24,8 +24,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import pytest
 import dataclasses
+
+import pytest
+
 from smartsim.entity import strategies
 from smartsim.entity.strategies import ParamSet
 from smartsim.error import errors
@@ -190,7 +192,8 @@ def test_strategy_returns_expected_set(strategy, expected_output):
     assert all(item in expected_output for item in output)
     assert all(item in output for item in expected_output)
 
+
 def test_param_set_is_frozen():
-    param = ParamSet("set1","set2")
+    param = ParamSet("set1", "set2")
     with pytest.raises(dataclasses.FrozenInstanceError):
         param.exe_args = "change"

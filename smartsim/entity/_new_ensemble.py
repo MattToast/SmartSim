@@ -84,9 +84,8 @@ class Ensemble(entity.CompoundEntity):
         )
         combinations = combinations if combinations else [ParamSet({}, {})]
         permutations_ = itertools.chain.from_iterable(
-                itertools.repeat(permutation, self.replicas)
-                for permutation in combinations
-            )
+            itertools.repeat(permutation, self.replicas) for permutation in combinations
+        )
         return tuple(
             Application(
                 name=f"{self.name}-{i}",
