@@ -45,7 +45,7 @@ class ParamSet:
     params: dict[str, str] = field(default_factory=dict)
     exe_args: dict[str, list[str]] = field(default_factory=dict)
 
-TPermutationStrategy = t.Callable[
+PermutationStrategyType = t.Callable[
     [t.Mapping[str, t.Sequence[str]], t.Mapping[str, t.Sequence[t.Sequence[str]]], int],
     list[ParamSet],
 ]
@@ -152,6 +152,24 @@ def create_all_permutations(
     exe_arg_params: t.Mapping[str, t.Sequence[t.Sequence[str]]],
     n_permutations: int = 0,
 ) -> list[ParamSet]:
+    """Take a mapping parameters to possible values and return a sequence of
+    all possible permutations of those parameters.
+    For example calling:
+    .. highlight:: python
+    .. code-block:: python
+        create_all_permutations({"A": ["1", "2"],
+                                 "B": ["3", "4"]})
+    Would result in the following permutations (not necessarily in this order):
+    .. highlight:: python
+    .. code-block:: python
+        [{"A": "1", "B": "3"},
+         {"A": "1", "B": "4"},
+         {"A": "2", "B": "3"},
+         {"A": "2", "B": "4"}]
+    :param params: A mapping of parameter names to possible values
+    :param _n_permutations: <ignored>
+    :return: A sequence of mappings of all possible permutations
+    """
     # Generate all possible permutations of parameter values
     file_params_permutations = itertools.product(*file_params.values())
     # Create dictionaries for each parameter permutation
@@ -180,6 +198,23 @@ def step_values(
     exe_args: t.Mapping[str, t.Sequence[t.Sequence[str]]],
     n_permutations: int = 0,
 ) -> list[ParamSet]:
+    """Take a mapping parameters to possible values and return a sequence of
+    stepped values until a possible values sequence runs out of possible
+    values.
+    For example calling:
+    .. highlight:: python
+    .. code-block:: python
+        step_values({"A": ["1", "2"],
+                     "B": ["3", "4"]})
+    Would result in the following permutations:
+    .. highlight:: python
+    .. code-block:: python
+        [{"A": "1", "B": "3"},
+         {"A": "2", "B": "4"}]
+    :param params: A mapping of parameter names to possible values
+    :param _n_permutations: <ignored>
+    :return: A sequence of mappings of stepped values
+    """
     # Zip the values of the 'params' dictionary
     param_zip = zip(*params.values())
     # Create a list of dictionaries, where each dictionary represents a combination of parameter values
@@ -208,6 +243,13 @@ def random_permutations(
     exe_args: t.Mapping[str, t.Sequence[t.Sequence[str]]],
     n_permutations: int = 0,
 ) -> list[ParamSet]:
+    """Take a mapping parameters to possible values and return a sequence of
+    length `n_permutations`  sampled randomly from all possible permutations
+    :param params: A mapping of parameter names to possible values
+    :param n_permutations: The maximum number of permutations to sample from
+        the sequence of all permutations
+    :return: A sequence of mappings of sampled permutations
+    """
     # Generate all possible permutations of parameters and executable arguments
     permutations = create_all_permutations(params, exe_args, -1)
     # If 'n_permutations' is specified and within a valid range, sample from the
