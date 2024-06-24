@@ -149,37 +149,41 @@ def _make_sanitized_custom_strategy(
 
 @_register("all_perm")
 def create_all_permutations(
-    file_params: t.Mapping[str, t.Sequence[str]],
-    exe_arg_params: t.Mapping[str, t.Sequence[t.Sequence[str]]],
-    n_permutations: int = 0,
+    params: t.Mapping[str, t.Sequence[str]],
+    exe_arg: t.Mapping[str, t.Sequence[t.Sequence[str]]],
+    n_permutations: int = -1,
 ) -> list[ParamSet]:
-    """Take a mapping parameters to possible values and return a sequence of
+    """Take two mapping parameters to possible values and return a sequence of
     all possible permutations of those parameters.
     For example calling:
     .. highlight:: python
     .. code-block:: python
-        create_all_permutations({"A": ["1", "2"],
-                                 "B": ["3", "4"]})
+        create_all_permutations({"SPAM": ["a", "b"],
+                                 "EGGS": ["c", "d"]},
+                                 {"EXE": [["a"], ["b", "c"]],
+                                 "ARGS": [["d"], ["e", "f"]]},
+                                 1
+                                 )
     Would result in the following permutations (not necessarily in this order):
     .. highlight:: python
     .. code-block:: python
-        [{"A": "1", "B": "3"},
-         {"A": "1", "B": "4"},
-         {"A": "2", "B": "3"},
-         {"A": "2", "B": "4"}]
-    :param params: A mapping of parameter names to possible values
-    :param _n_permutations: <ignored>
-    :return: A sequence of mappings of all possible permutations
+        [ParamSet(params={'SPAM': 'a', 'EGGS': 'c'},
+         exe_args={'EXE': ['a'], 'ARGS': ['d']})]
+    :param file_params: A mapping of file parameter names to possible values
+    :param exe_arg_params: A mapping of exe arg parameter names to possible values
+    :param n_permutations: The maximum number of permutations to sample from
+        the sequence of all permutations
+    :return: A sequence of ParamSets of all possible permutations
     """
-    file_params_permutations = itertools.product(*file_params.values())
+    file_params_permutations = itertools.product(*params.values())
     param_zip = (
-        dict(zip(file_params, permutation)) for permutation in file_params_permutations
+        dict(zip(params, permutation)) for permutation in file_params_permutations
     )
-    exe_arg_params_permutations = itertools.product(*exe_arg_params.values())
-    exe_arg_zip = [
-        dict(zip(exe_arg_params, permutation))
+    exe_arg_params_permutations = itertools.product(*exe_arg.values())
+    exe_arg_zip = (
+        dict(zip(exe_arg, permutation))
         for permutation in exe_arg_params_permutations
-    ]
+    )
     combinations = itertools.product(param_zip, exe_arg_zip)
     param_set = (ParamSet(file_param, exe_arg) for file_param, exe_arg in combinations)
     if n_permutations >= 0:
@@ -191,24 +195,30 @@ def create_all_permutations(
 def step_values(
     params: t.Mapping[str, t.Sequence[str]],
     exe_args: t.Mapping[str, t.Sequence[t.Sequence[str]]],
-    n_permutations: int = 0,
+    n_permutations: int = -1,
 ) -> list[ParamSet]:
-    """Take a mapping parameters to possible values and return a sequence of
+    """Take two mapping parameters to possible values and return a sequence of
     stepped values until a possible values sequence runs out of possible
     values.
     For example calling:
     .. highlight:: python
     .. code-block:: python
-        step_values({"A": ["1", "2"],
-                     "B": ["3", "4"]})
+        step_values({"SPAM": ["a", "b"],
+                     "EGGS": ["c", "d"]},
+                     {"EXE": [["a"], ["b", "c"]],
+                     "ARGS": [["d"], ["e", "f"]]},
+                     1
+                     )
     Would result in the following permutations:
     .. highlight:: python
     .. code-block:: python
-        [{"A": "1", "B": "3"},
-         {"A": "2", "B": "4"}]
-    :param params: A mapping of parameter names to possible values
-    :param _n_permutations: <ignored>
-    :return: A sequence of mappings of stepped values
+        [ParamSet(params={'SPAM': 'a', 'EGGS': 'c'},
+         exe_args={'EXE': ['a'], 'ARGS': ['d']})]
+    :param file_params: A mapping of file parameter names to possible values
+    :param exe_arg_params: A mapping of exe arg parameter names to possible values
+    :param _n_permutations: The maximum number of permutations to sample from
+        the sequence of step permutations
+    :return: A sequence of ParamSets of stepped values
     """
     param_zip = zip(*params.values())
     param_zip = (dict(zip(params, step)) for step in param_zip)
@@ -227,14 +237,15 @@ def step_values(
 def random_permutations(
     params: t.Mapping[str, t.Sequence[str]],
     exe_args: t.Mapping[str, t.Sequence[t.Sequence[str]]],
-    n_permutations: int = 0,
+    n_permutations: int = -1,
 ) -> list[ParamSet]:
-    """Take a mapping parameters to possible values and return a sequence of
+    """Take two mapping parameters to possible values and return a sequence of
     length `n_permutations`  sampled randomly from all possible permutations
-    :param params: A mapping of parameter names to possible values
+    :param file_params: A mapping of file parameter names to possible values
+    :param exe_arg_params: A mapping of exe arg parameter names to possible values
     :param n_permutations: The maximum number of permutations to sample from
         the sequence of all permutations
-    :return: A sequence of mappings of sampled permutations
+    :return: A sequence of ParamSets of sampled permutations
     """
     permutations = create_all_permutations(params, exe_args, -1)
     if 0 <= n_permutations < len(permutations):
