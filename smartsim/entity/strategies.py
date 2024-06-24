@@ -181,8 +181,7 @@ def create_all_permutations(
     )
     exe_arg_params_permutations = itertools.product(*exe_arg.values())
     exe_arg_zip = (
-        dict(zip(exe_arg, permutation))
-        for permutation in exe_arg_params_permutations
+        dict(zip(exe_arg, permutation)) for permutation in exe_arg_params_permutations
     )
     combinations = itertools.product(param_zip, exe_arg_zip)
     param_set = (ParamSet(file_param, exe_arg) for file_param, exe_arg in combinations)
