@@ -202,7 +202,7 @@ class Versioner:
         version = str(self.SMARTSIM)
 
         if self.SMARTSIM_SUFFIX:
-            version += f"+{self.SMARTSIM_SUFFIX}"
+            version += f"{self.SMARTSIM_SUFFIX}"
 
             # wheel build (python -m build) won't include git sha
             if git_sha := self.get_sha(setup_py_dir):
