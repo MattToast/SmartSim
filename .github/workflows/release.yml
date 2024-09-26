@@ -32,7 +32,6 @@ on:
   release:
     types: [published]
 
-
 jobs:
   build_dists:
     name: Build Distributions
@@ -77,7 +76,7 @@ jobs:
         with:
           user: __token__
           password: ${{ secrets.TEST_PYPI }}
-          repository_url: https://test.pypi.org/legacy/
+          repository-url: https://test.pypi.org/legacy/
 
 
   createPullRequest:
