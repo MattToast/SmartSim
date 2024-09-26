@@ -37,6 +37,8 @@ jobs:
   build_dists:
     name: Build Distributions
     runs-on: ubuntu-22.04
+    env:
+      SMARTSIM_SUFFIX: rc1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -61,6 +63,7 @@ jobs:
 
   upload_pypi:
     needs: [build_dists]
+    environment: personal
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v3
@@ -71,8 +74,8 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
-          password: ${{ secrets.PYPI }}
-          #repository_url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI }}
+          repository_url: https://test.pypi.org/legacy/
 
 
   createPullRequest:
